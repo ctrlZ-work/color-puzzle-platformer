@@ -42,4 +42,21 @@ npm run preview
 
 ## Publishing a test build
 
-Added in issue 1.2.
+Test builds go to a separate Netlify site, never to the live portal:
+
+- Playtest URL: https://color-puzzle-platformer-playtest.netlify.app
+- Netlify project: `color-puzzle-platformer-playtest` (Open Art Media team), site ID `e8708c2c-e263-4c2e-addf-9ce9991af54f`
+- `netlify.toml` tells Netlify to run `npm run build` and publish `dist/`.
+
+The site is not connected to GitHub, so pushing does not deploy by itself. To publish the current checkout, use either:
+
+1. **Netlify connector (agents with the Netlify MCP connector):** call the deploy operation (`deploy-site`) with the site ID above. It returns a one-time `npx -y @netlify/mcp@latest --site-id ... --proxy-path ...` command; run that from the repo root. It uploads the source and Netlify builds it.
+2. **Netlify CLI (anyone with access to the Open Art Media Netlify team):**
+   ```
+   npx -y netlify-cli deploy --build --prod --site e8708c2c-e263-4c2e-addf-9ce9991af54f
+   ```
+   Sign in first with `npx -y netlify-cli login`, or set `NETLIFY_AUTH_TOKEN`.
+
+After publishing, open the playtest URL and check the game loads with no errors in the browser console. Only publish from `main` or from the branch of the issue being tested.
+
+The playtest site is public but unlisted. Don't link to it from anywhere public.
