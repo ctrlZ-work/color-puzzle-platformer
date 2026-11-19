@@ -1,0 +1,19 @@
+{
+  "name": "color-puzzle-platformer",
+  "version": "0.0.1",
+  "description": "Color puzzle platformer (working title) for playadinfinitum.com",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "phaser": "^4.2.1"
+  },
+  "devDependencies": {
+    "vite": "^8.3.8"
+  },
+  "private": true,
+  "type": "module"
+}
