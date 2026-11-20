@@ -16,6 +16,7 @@ Every room declares its goal as an end state in the map's custom properties. The
 | `goal` | string | `all-in-portal`: every color standing inside the portal. `object-effect`: one object has a given reaction. |
 | `goalObject` | int | For `object-effect`: the Tiled ID of the object. |
 | `goalEffect` | string | For `object-effect`: the effect it must have (`hot`, `float`, ...). |
+| `background` | string | Optional. Names a background pair in `public/assets/backgrounds/`: `<name>.png` (color) and `<name>-bw.png` (black-and-white, same size). The room starts black-and-white and fades to color as it's restored (see Room rules). |
 
 ## Layers (names must match)
 
@@ -43,7 +44,7 @@ Every room declares its goal as an end state in the map's custom properties. The
 What an object becomes when a color touches it is set in `src/game/reactions.js` (object type x color). The first color to touch an object decides, and it stays that way until the room restarts. Current reactions for `platform`:
 
 - Red: hot. It turns red, melts the ice touching it, and can no longer be stood on.
-- Blue: floating. It turns blue, and if it's in water it rises to the surface, where colors can stand on it.
+- Blue: floating. It turns blue, and if it's in water it rises to the surface, where colors can stand on it. A color swimming in the water passes under or beside a floating platform; it gets on top by jumping.
 - Yellow: glowing (defined, not used until Yellow exists).
 
 ## Movement numbers for room design
@@ -60,4 +61,9 @@ From the movement settings in `src/game/ColorCharacter.js` (gravity 900, run spe
 - Restart (R, or the gamepad's Back/Select button): the whole room reloads from this file, so objects are back as authored and the colors are back at their spawns.
 - Blue is always the active color when a room starts.
 - A room that's already solved starts with its portal open, so returning to it never traps the player.
+- Background fade: each reacting object a color has touched counts one part of the room's color, and the open portal one more; the color background's opacity follows that share, so a solved room is in full color.
 - Meeting the goal marks the room solved and unlocks the next room in `src/game/rooms.js`. Progress (unlocked rooms, solved rooms, current room) is saved in the browser's localStorage.
+
+## Room lists
+
+`src/game/rooms.js` holds the play order. The game plays the prototype rooms (`proto-1` to `proto-5`, generated once by `tools/make-prototype-rooms.mjs` from the issue 3.1 designs; the JSON files are now the source of truth). Opening the game with `?rooms=test` plays the M2 test rooms instead, which the systems check uses. Both lists share one save slot; a save from the other list falls back to that list's first room.

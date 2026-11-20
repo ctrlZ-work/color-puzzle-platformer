@@ -51,6 +51,16 @@ npm test
 
 Runs the small automated tests in `tests/` (the first-touch color rule and the save/unlock rules).
 
+Play checks (need Python 3, `pip install playwright`, and Google Chrome at `/usr/bin/google-chrome`), run against a build or a deployed URL:
+
+```
+npm run build
+python3 tools/checks/check-systems.py dist /tmp/shots            # M2 systems, in the test rooms (?rooms=test)
+python3 tools/checks/check-prototype-rooms.py dist /tmp/shots    # every documented solution and wrong choice in the 5 prototype rooms
+```
+
+Each prints PASS/FAIL per behavior. They drive the game with timed key presses, so a very slow machine can fail a step that works by hand.
+
 ## Tech
 
 - [Phaser 4](https://phaser.io) game framework with Arcade physics.
@@ -79,7 +89,7 @@ Publish from a clean checkout of the exact commit you mean to test: after `npm i
 
 After publishing:
 
-- Open the deploy's own permanent link (`https://<deploy-id>--color-puzzle-platformer-playtest.netlify.app`) as well as the playtest URL, and check the game loads with no errors in the browser console. A correct load currently shows a title screen with New game (and Continue, if there's saved progress); New game opens the test room: two lines of controls at the top, a high ledge on the left, a gray water pool with a gray platform sunk at the bottom, a gray platform next to a stack of two ice blocks, a pit, and spikes on the far right; a blue circle and a red square stand on the left ground with a small white marker above the blue circle.
+- Open the deploy's own permanent link (`https://<deploy-id>--color-puzzle-platformer-playtest.netlify.app`) as well as the playtest URL, and check the game loads with no errors in the browser console. A correct load currently shows a title screen with New game (and Continue, if there's saved progress); New game opens prototype room 1, "Up together": two lines of controls at the top, a black-and-white landscape behind (gray sky, hills, trees and sun), a tall ledge on the right with a gray portal box on it, a short gray step in front of the ledge, and a blue circle and a red square on the left ground with a small white marker above the blue circle. Touching the step brings some color into the landscape; solving the room brings it to full color.
 - Netlify does not record which commit an upload came from, so write the commit and the deploy ID in the plan issue's Evidence line. With the CLI you can also add `--message "<commit>"` so the Netlify deploy list shows it.
 
 Only publish from `main` or from the branch of the issue being tested.

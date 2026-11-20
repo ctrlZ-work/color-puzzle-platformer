@@ -50,6 +50,15 @@ export class RoomScene extends Phaser.Scene {
 
   preload() {
     this.load.image('tiles', 'assets/tiles.png');
+    // A room's background pair is named by its map's "background" property, so it's only known once
+    // the map file has loaded. (On a restart everything is already cached and this doesn't fire.)
+    this.load.once(`filecomplete-tilemapJSON-${this.roomKey}`, (key, type, file) => {
+      const json = file && file.data ? file.data : file;
+      const bg = ((json && json.properties) || []).find((p) => p.name === 'background');
+      if (!bg) return;
+      this.load.image(bg.value, `assets/backgrounds/${bg.value}.png`);
+      this.load.image(`${bg.value}-bw`, `assets/backgrounds/${bg.value}-bw.png`);
+    });
     this.load.tilemapTiledJSON(this.roomKey, `rooms/${this.roomKey}.json`);
   }
 
@@ -72,6 +81,16 @@ export class RoomScene extends Phaser.Scene {
     this.portal = null;
     this.portalOpen = false;
 
+    // Background: the black-and-white version underneath, the color version on top of it, fading in
+    // as the room is restored (see updateRestored). Placeholder art proving the technique (issue 3.2).
+    this.bgColor = null;
+    const bg = this.roomProps.background;
+    if (bg && this.textures.exists(bg) && this.textures.exists(`${bg}-bw`)) {
+      this.add.image(0, 0, `${bg}-bw`).setOrigin(0, 0).setDepth(-11);
+      this.bgColor = this.add.image(0, 0, bg).setOrigin(0, 0).setDepth(-10).setAlpha(0);
+    }
+    this.restored = 0;
+
     // Objects from the Tiled object layer, keyed by their stable Tiled ID.
     this.objectsById = new Map();
     this.objectGroup = this.physics.add.staticGroup();
@@ -86,10 +105,12 @@ export class RoomScene extends Phaser.Scene {
         const r = this.add.rectangle(o.x, o.y, o.width, o.height, BW_FILL).setOrigin(0, 0);
         r.setStrokeStyle(1, 0x7a7a7a);
         this.objectGroup.add(r);
-        this.objectsById.set(o.id, {
+        const rec = {
           id: o.id, name: o.name, type: o.type, props, sprite: r,
           reacts: props.reacts === true, touchedBy: null, effect: null,
-        });
+        };
+        r.setData('obj', rec);
+        this.objectsById.set(o.id, rec);
       } else if (o.type === 'portal') {
         // Exit portal: black-and-white and closed until the room's goal is met.
         const r = this.add.rectangle(o.x, o.y, o.width, o.height, 0x555555, 0.6).setOrigin(0, 0); // drawn behind the colors
@@ -103,7 +124,7 @@ export class RoomScene extends Phaser.Scene {
     this.chars = order.map((n) => new ColorCharacter(this, n, spawns[n].x, spawns[n].y - 8));
     for (const c of this.chars) {
       this.physics.add.collider(c.sprite, this.terrain);
-      this.physics.add.collider(c.sprite, this.objectGroup);
+      this.physics.add.collider(c.sprite, this.objectGroup, null, (cs, os) => this.objectBlocks(c, os.getData('obj')));
     }
     this.activeIndex = 0;
     this.hazardResets = 0;
@@ -115,7 +136,7 @@ export class RoomScene extends Phaser.Scene {
         8,
         6,
         'Move: arrows/WASD or stick   Jump: Space/Up or A   Switch: Q/Tab or Y\nDive: Down   Restart room: R or Back   Use open portal: E/Enter or X',
-        { fontFamily: 'monospace', fontSize: '8px', color: '#bbbbbb' },
+        { fontFamily: 'monospace', fontSize: '8px', color: '#ffffff', stroke: '#000000', strokeThickness: 2 },
       )
       .setDepth(3);
 
@@ -155,6 +176,20 @@ export class RoomScene extends Phaser.Scene {
     else this.fadeTo(this.portal.sprite, PORTAL_OPEN_FILL, 0x555555);
     markSolved(this.save, ROOMS, this.roomKey);
     writeSave(this.save);
+    this.updateRestored(instant);
+  }
+
+  // How much of the room's color is back: each object a color has touched counts one part, and the
+  // open portal counts one more. The color background's opacity follows it.
+  updateRestored(instant = false) {
+    const objs = [...this.objectsById.values()].filter((o) => o.reacts);
+    const parts = objs.length + (this.portal ? 1 : 0);
+    const done = objs.filter((o) => o.touchedBy).length + (this.portalOpen ? 1 : 0);
+    this.restored = parts ? done / parts : 0;
+    if (!this.bgColor) return;
+    this.tweens.killTweensOf(this.bgColor);
+    if (instant) this.bgColor.setAlpha(this.restored);
+    else this.tweens.add({ targets: this.bgColor, alpha: this.restored, duration: 900 });
   }
 
   kindOf(tile) {
@@ -260,6 +295,13 @@ export class RoomScene extends Phaser.Scene {
     this.marker.setPosition(a.center.x, top - 7);
   }
 
+  // A color swimming in the water passes under or beside a floating raft instead of being pushed up
+  // onto it; it can still climb onto the raft from above, by jumping.
+  objectBlocks(c, obj) {
+    if (!obj || obj.effect !== 'float' || !c.inWater) return true;
+    return c.body.bottom <= obj.sprite.y + 2;
+  }
+
   // Touching an object (standing on it or against its side) gives it that color's reaction,
   // if no color has touched it yet in this room.
   updateObjects() {
@@ -286,6 +328,7 @@ export class RoomScene extends Phaser.Scene {
     this.drawMark(obj, reaction.mark);
     const handler = EFFECTS[reaction.effect];
     if (handler && handler.apply) handler.apply(this, obj);
+    this.updateRestored();
   }
 
   // Each reaction also gets a pattern, so a changed object never relies on hue alone (spec section 8).
