@@ -49,8 +49,15 @@ export class ColorCharacter {
     this.supporter = null; // the character this one is standing on, if any
   }
 
+  // Standing on another color counts only if that color is itself standing (or floating), so a color
+  // can't jump again off one that is in mid-air.
   get onGround() {
-    return this.body.blocked.down || this.supporter !== null || this.atSurface;
+    let c = this;
+    for (let depth = 0; depth < 4 && c; depth++) {
+      if (c.body.blocked.down || c.atSurface) return true;
+      c = c.supporter;
+    }
+    return false;
   }
 
   respawn() {

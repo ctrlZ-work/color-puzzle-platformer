@@ -58,6 +58,7 @@ From the movement settings in `src/game/ColorCharacter.js` (gravity 900, run spe
 ## Room rules the game applies
 
 - Falling off the bottom of the room, spikes, or a non-swimmer sinking in water: every color goes back to its spawn point. Objects keep their current state.
+- The room's left and right edges are walls. Colors stand on each other only by landing on top: a color jumping upward passes through a color above it instead of picking it up, and a color can't jump off another color that is in mid-air.
 - Restart (R, or the gamepad's Back/Select button): the whole room reloads from this file, so objects are back as authored and the colors are back at their spawns.
 - Blue is always the active color when a room starts.
 - A room that's already solved starts with its portal open, so returning to it never traps the player.

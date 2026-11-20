@@ -16,6 +16,14 @@ export class Controls {
     this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,A,D,W,S,SPACE,Q,TAB,R,E,ENTER,ESC');
     kb.addCapture('TAB,SPACE,UP,DOWN,LEFT,RIGHT');
     this.prevPad = sharedPadState;
+    // A tap that goes down and up between two frames is missed by JustDown, so key presses are also
+    // latched from the keydown event and counted on the next frame. Held-key repeats are ignored.
+    this.tapped = new Set();
+    const onKey = (ev) => {
+      if (!ev.repeat) this.tapped.add(ev.keyCode);
+    };
+    kb.on('keydown', onKey);
+    scene.events.once('shutdown', () => kb.off('keydown', onKey));
   }
 
   pad() {
@@ -47,7 +55,10 @@ export class Controls {
 
     // JustDown is true only once per key press, so read each key's edge once.
     const e = {};
-    for (const name of ['SPACE', 'UP', 'W', 'DOWN', 'S', 'Q', 'TAB', 'R', 'E', 'ENTER', 'ESC']) e[name] = jd(k[name]);
+    for (const name of ['SPACE', 'UP', 'W', 'DOWN', 'S', 'Q', 'TAB', 'R', 'E', 'ENTER', 'ESC']) {
+      e[name] = jd(k[name]) || this.tapped.has(k[name].keyCode);
+    }
+    this.tapped.clear();
     const padA = this.padEdge('a', btn(0));
 
     this.jumpHeld = k.SPACE.isDown || k.UP.isDown || k.W.isDown || btn(0);

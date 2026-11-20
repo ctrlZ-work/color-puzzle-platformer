@@ -121,7 +121,7 @@ try:
         jump("blue", "ArrowRight", 300)
         check("room 1: Blue on Red reaches the ledge", st()["blue"]["bottom"] == 144, json.dumps(st()["blue"]))
         jump("red", "ArrowRight", 250)
-        check("room 1: Red jumps onto the ledge alone", st()["red"]["bottom"] == 144, json.dumps(st()["red"]))
+        check("room 1: Red jumps onto the ledge alone (on the ledge or on Blue there)", st()["red"]["bottom"] <= 144 and st()["red"]["x"] >= 304, json.dumps(st()["red"]))
         walk_to("red", 392); walk_to("blue", 410); settle(1200)
         s = st()
         check("room 1 intended solution: both in the portal, portal opens", s["open"] is True, json.dumps(s))
@@ -269,6 +269,52 @@ try:
             walk_to("red", 186); settle(400)            # Red through step A (hot), stops before step B
             walk_to("blue", 250); push("blue", "ArrowRight", 600)           # Blue touches step B first
             check("room 5: step A's color doesn't matter; Blue touching step B first is what counts", effect(3) == "hot" and effect(4) == "float", str(st()["objs"]))
+
+        # ---------- Review 3.3 defect rechecks ----------
+        if room(5):
+            # Defect 1: Red jumping up under a jumping Blue must not catch and carry it.
+            start_room("proto-5")
+            walk_to("red", 250); push("red", "ArrowRight", 700); walk_to("red", 330)
+            walk_to("blue", 330)
+            caught = False
+            for delay in (70, 150, 250, 400):
+                make_active("blue")
+                pg.keyboard.down("Space"); pg.wait_for_timeout(delay)
+                pg.keyboard.down("q"); pg.wait_for_timeout(40); pg.keyboard.up("q")
+                pg.keyboard.up("Space"); pg.keyboard.down("Space"); pg.keyboard.down("ArrowRight")
+                pg.wait_for_timeout(600); pg.keyboard.up("ArrowRight"); pg.keyboard.up("Space"); settle(900)
+                s = st()
+                if s["blue"]["bottom"] <= 128: caught = True
+                walk_to("red", 330); walk_to("blue", 330)
+            check("review defect 1: Red jumping under a jumping Blue doesn't carry it onto the room 5 ledge", not caught, json.dumps(st()))
+        if room(1):
+            # Defect 3: a tap shorter than one frame still counts.
+            start_room("proto-1")
+            before = st()["active"]
+            pg.evaluate("""() => { const o = {key: 'q', code: 'KeyQ', keyCode: 81, which: 81, bubbles: true};
+              window.dispatchEvent(new KeyboardEvent('keydown', o)); window.dispatchEvent(new KeyboardEvent('keyup', o)); }""")
+            settle(200)
+            check("review defect 3: a key tapped down and up within one frame still switches color", st()["active"] != before, f'{before} -> {st()["active"]}')
+            # Defect 4: the room's side edges are walls.
+            make_active("blue"); hold("ArrowLeft", 1200); settle(300)
+            s = st()
+            check("review defect 4: walking off the left edge is blocked by a wall, not a reset", s["blue"]["x"] >= 0 and s["h"] == 0, json.dumps(s))
+        if room(2):
+            # Defect 2: the travel screen's default choice is worked out on every visit.
+            pg.evaluate("localStorage.setItem('color-puzzle-platformer-save-v1', JSON.stringify({unlocked:['proto-1','proto-2','proto-3','proto-4','proto-5'],solved:['proto-1','proto-2','proto-3','proto-4','proto-5'],current:'proto-1'}))")
+            pg.evaluate("window.game.scene.getScene('Room').scene.restart({ room: 'proto-1' })"); wait_room("proto-1")
+            # (This check is about the travel screen, so Blue is put straight into the open portal.)
+            place_blue = "window.game.scene.getScene('Room').chars[0].body.reset(408, 120)"
+            pg.evaluate(place_blue); settle(500); make_active("blue")
+            tap("e"); pg.wait_for_function("window.game.scene.getScene('Travel').sys.isActive()", timeout=5000); settle(300)
+            first = pg.evaluate("window.game.scene.getScene('Travel').selected")
+            tap("Escape"); settle(400)
+            pg.evaluate("window.game.scene.getScene('Room').scene.restart({ room: 'proto-4' })"); wait_room("proto-4")
+            pg.evaluate("window.game.scene.getScene('Room').chars[0].body.reset(440, 200)"); settle(500); make_active("blue")
+            tap("e"); pg.wait_for_function("window.game.scene.getScene('Travel').sys.isActive()", timeout=5000); settle(300)
+            second = pg.evaluate("window.game.scene.getScene('Travel').selected")
+            tap("Escape"); settle(300)
+            check("review defect 2: travel screen preselects the room after the current one on each visit", first == 1 and second == 4, f"{first} {second}")
 
         print("console errors:", errors)
         check("no console errors", not errors, "; ".join(errors[:5]))

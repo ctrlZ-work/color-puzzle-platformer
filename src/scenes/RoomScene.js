@@ -126,6 +126,10 @@ export class RoomScene extends Phaser.Scene {
       this.physics.add.collider(c.sprite, this.terrain);
       this.physics.add.collider(c.sprite, this.objectGroup, null, (cs, os) => this.objectBlocks(c, os.getData('obj')));
     }
+    // The room's left and right edges are walls; falling out of the bottom is still a hazard.
+    this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+    this.physics.world.setBoundsCollision(true, true, false, false);
+    for (const c of this.chars) c.body.setCollideWorldBounds(true);
     this.activeIndex = 0;
     this.hazardResets = 0;
 
@@ -440,6 +444,9 @@ export class RoomScene extends Phaser.Scene {
       if (this.time.now - rider.jumpedAt < 150) continue; // just jumped off
       for (const sup of this.chars) {
         if (sup === rider) continue;
+        // A color jumping upward can't scoop up another color from below; it passes through, as
+        // when it jumps from under a color already standing on it.
+        if (was !== sup && sup.body.velocity.y < 0 && !sup.inWater) continue;
         const r = rider.body;
         const s = sup.body;
         const overlapX = r.right > s.left + 2 && r.left < s.right - 2;
