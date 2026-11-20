@@ -39,13 +39,14 @@ npm run preview
 - Jump: Space, Up or W; gamepad A
 - Switch color: Q or Tab; gamepad Y or a shoulder button
 - Dive (Blue, in water): Down or S; gamepad down
+- Restart the room: R; gamepad Back/Select
 
 ## Tech
 
 - [Phaser 4](https://phaser.io) game framework with Arcade physics.
 - [Vite](https://vite.dev) for the dev server and build.
 - Internal resolution 480x270, scaled to fit the window.
-- Levels will be authored in the [Tiled](https://www.mapeditor.org) JSON format (from issue 2.2).
+- Rooms are [Tiled](https://www.mapeditor.org) JSON maps in `public/rooms/`; the format is in [docs/room-format.md](docs/room-format.md).
 
 ## Publishing a test build
 
@@ -68,7 +69,7 @@ Publish from a clean checkout of the exact commit you mean to test: after `npm i
 
 After publishing:
 
-- Open the deploy's own permanent link (`https://<deploy-id>--color-puzzle-platformer-playtest.netlify.app`) as well as the playtest URL, and check the game loads with no errors in the browser console. Until Tiled rooms exist (issue 2.2), a correct load shows the code-built test room: a controls line at the top, a high ledge on the left, a gray water pool in the middle, a blue circle and a red square standing on the left ground, and a small white marker above the blue circle.
+- Open the deploy's own permanent link (`https://<deploy-id>--color-puzzle-platformer-playtest.netlify.app`) as well as the playtest URL, and check the game loads with no errors in the browser console. A correct load currently shows the test room: two lines of controls at the top, a high ledge on the left, a gray water pool, a gray platform next to a stack of two ice blocks, a pit, and spikes on the far right; a blue circle and a red square stand on the left ground with a small white marker above the blue circle.
 - Netlify does not record which commit an upload came from, so write the commit and the deploy ID in the plan issue's Evidence line. With the CLI you can also add `--message "<commit>"` so the Netlify deploy list shows it.
 
 Only publish from `main` or from the branch of the issue being tested.
