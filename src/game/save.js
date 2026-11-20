@@ -23,7 +23,12 @@ export function loadSave(rooms, store = storage()) {
     if (!raw) return null;
     const s = JSON.parse(raw);
     if (!Array.isArray(s.unlocked) || !Array.isArray(s.solved)) return null;
+    // Drop rooms that no longer exist in this build, so an old save can't point at a missing room.
+    const known = new Set(rooms.map((r) => r.key));
+    s.unlocked = s.unlocked.filter((k) => known.has(k));
+    s.solved = s.solved.filter((k) => known.has(k));
     if (!s.unlocked.includes(rooms[0].key)) s.unlocked.unshift(rooms[0].key);
+    if (!s.unlocked.includes(s.current)) s.current = rooms[0].key;
     return s;
   } catch {
     return null;

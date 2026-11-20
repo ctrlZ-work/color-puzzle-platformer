@@ -1,12 +1,13 @@
 // The reaction table: object type x color -> what the object becomes.
-// New objects and colors are added here as data. Each `effect` names a behavior the room
-// knows how to apply (see RoomScene.applyEffect).
+// Any object type listed here can be placed in a Tiled room and will react. Each `effect` names a
+// behavior in the EFFECTS list in RoomScene.js; `mark` is the pattern drawn on the object so the
+// change can be read without telling hues apart (zigzag, waves or dots).
 
 export const REACTIONS = {
   platform: {
-    red: { effect: 'hot', fill: 0xe03a3a }, // melts ice next to it; can't be stood on
-    blue: { effect: 'float', fill: 0x3a6ee0 }, // floats up to the surface when it's in water
-    yellow: { effect: 'glow', fill: 0xe8c93a }, // defined now, used from issue 4.1
+    red: { effect: 'hot', fill: 0xe03a3a, mark: 'zigzag' }, // melts ice next to it; can't be stood on
+    blue: { effect: 'float', fill: 0x3a6ee0, mark: 'waves' }, // floats up to the surface when it's in water
+    yellow: { effect: 'glow', fill: 0xe8c93a, mark: 'dots' }, // defined now, used from issue 4.1
   },
 };
 

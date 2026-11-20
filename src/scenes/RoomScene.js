@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { Controls } from '../game/Controls.js';
-import { touchObject } from '../game/reactions.js';
+import { touchObject, REACTIONS } from '../game/reactions.js';
 import { ROOMS } from '../game/rooms.js';
 import { loadSave, freshSave, writeSave, markSolved } from '../game/save.js';
 import {
   ColorCharacter,
+  COLOR_ORDER,
   MOVE_SPEED,
   SWIM_SPEED,
   COYOTE_MS,
@@ -20,6 +21,23 @@ const TILE = 16;
 const BW_FILL = 0xbdbdbd;
 const PORTAL_OPEN_FILL = 0xb07cf0;
 
+// What each reaction effect does in the room. A new effect is one entry here plus its row in
+// src/game/reactions.js; an effect with no entry only changes the object's color and pattern.
+const EFFECTS = {
+  hot: {
+    apply(scene, obj) {
+      obj.sprite.body.enable = false; // too hot to stand on
+      scene.meltIceAround(obj.sprite.getBounds());
+    },
+  },
+  float: {
+    step(scene, obj) {
+      scene.floatStep(obj);
+    },
+  },
+  // glow: its light behavior arrives with Yellow in issue 4.1.
+};
+
 export class RoomScene extends Phaser.Scene {
   constructor() {
     super('Room');
@@ -27,6 +45,7 @@ export class RoomScene extends Phaser.Scene {
 
   init(data) {
     this.roomKey = (data && data.room) || ROOMS[0].key;
+    this.ready = false;
   }
 
   preload() {
@@ -61,8 +80,9 @@ export class RoomScene extends Phaser.Scene {
       const props = Object.fromEntries((o.properties || []).map((p) => [p.name, p.value]));
       if (o.type === 'spawn') {
         spawns[o.name] = { x: o.x, y: o.y };
-      } else if (o.type === 'platform') {
-        // Black-and-white platform; what it becomes depends on the first color to touch it.
+      } else if (REACTIONS[o.type]) {
+        // Any object type listed in the reaction table: black-and-white until the first color
+        // touches it, which decides what it becomes.
         const r = this.add.rectangle(o.x, o.y, o.width, o.height, BW_FILL).setOrigin(0, 0);
         r.setStrokeStyle(1, 0x7a7a7a);
         this.objectGroup.add(r);
@@ -78,8 +98,8 @@ export class RoomScene extends Phaser.Scene {
       }
     }
 
-    // Spawn points are the bottom-centre of each color. Blue starts active.
-    const order = ['blue', 'red'].filter((n) => spawns[n]);
+    // Spawn points are the bottom-centre of each color. The first color in COLOR_ORDER (Blue) starts active.
+    const order = COLOR_ORDER.filter((n) => spawns[n]);
     this.chars = order.map((n) => new ColorCharacter(this, n, spawns[n].x, spawns[n].y - 8));
     for (const c of this.chars) {
       this.physics.add.collider(c.sprite, this.terrain);
@@ -104,6 +124,10 @@ export class RoomScene extends Phaser.Scene {
     this.save.current = this.roomKey;
     writeSave(this.save);
 
+    // A room already solved keeps its portal open, so returning to it (backtracking) never traps you.
+    if (this.portal && this.save.solved.includes(this.roomKey)) this.openPortal(true);
+
+    this.registry.inc('roomStarts', 1); // counted for automated checks
     this.ready = true; // for automated checks
   }
 
@@ -125,9 +149,10 @@ export class RoomScene extends Phaser.Scene {
     return false;
   }
 
-  openPortal() {
+  openPortal(instant = false) {
     this.portalOpen = true;
-    this.fadeTo(this.portal.sprite, PORTAL_OPEN_FILL, 0x555555);
+    if (instant) this.portal.sprite.setFillStyle(PORTAL_OPEN_FILL, 0.6);
+    else this.fadeTo(this.portal.sprite, PORTAL_OPEN_FILL, 0x555555);
     markSolved(this.save, ROOMS, this.roomKey);
     writeSave(this.save);
   }
@@ -184,8 +209,9 @@ export class RoomScene extends Phaser.Scene {
     if (this.portalOpen && ctl.usePressed) {
       const b = this.active.body;
       if (Phaser.Geom.Intersects.RectangleToRectangle(this.portal.area, new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height))) {
-        this.ready = false;
-        this.scene.start('Travel', { from: this.roomKey });
+        // The room waits, paused, under the travel screen; backing out resumes it as it was.
+        this.scene.launch('Travel', { from: this.roomKey });
+        this.scene.pause();
         return;
       }
     }
@@ -203,11 +229,9 @@ export class RoomScene extends Phaser.Scene {
       }
       baseVx.set(c, vx);
     }
-    for (const c of this.chars) {
-      // A color standing on another moves with it (this is how Blue carries Red).
-      const ride = c.supporter ? baseVx.get(c.supporter) : 0;
-      c.body.setVelocityX(baseVx.get(c) + ride);
-    }
+    // A color standing on another moves with it (this is how Blue carries Red), down a whole stack.
+    const ride = (c, depth = 0) => (c.supporter && depth < 4 ? baseVx.get(c.supporter) + ride(c.supporter, depth + 1) : 0);
+    for (const c of this.chars) c.body.setVelocityX(baseVx.get(c) + ride(c));
 
     for (const c of this.chars) {
       if (c.onGround) c.lastGroundedAt = time;
@@ -240,7 +264,8 @@ export class RoomScene extends Phaser.Scene {
   // if no color has touched it yet in this room.
   updateObjects() {
     for (const obj of this.objectsById.values()) {
-      if (obj.effect === 'float') this.floatStep(obj);
+      const handler = EFFECTS[obj.effect];
+      if (handler && handler.step) handler.step(this, obj);
       if (obj.touchedBy || !obj.reacts) continue;
       const r = obj.sprite.getBounds();
       Phaser.Geom.Rectangle.Inflate(r, 2, 2);
@@ -258,10 +283,30 @@ export class RoomScene extends Phaser.Scene {
   applyEffect(obj, reaction) {
     obj.effect = reaction.effect;
     this.fadeTo(obj.sprite, reaction.fill);
-    if (reaction.effect === 'hot') {
-      obj.sprite.body.enable = false; // too hot to stand on
-      this.meltIceAround(obj.sprite.getBounds());
+    this.drawMark(obj, reaction.mark);
+    const handler = EFFECTS[reaction.effect];
+    if (handler && handler.apply) handler.apply(this, obj);
+  }
+
+  // Each reaction also gets a pattern, so a changed object never relies on hue alone (spec section 8).
+  drawMark(obj, mark) {
+    if (!mark) return;
+    const s = obj.sprite;
+    const g = this.add.graphics({ x: s.x, y: s.y }).setDepth(1);
+    g.lineStyle(1, 0xffffff, 0.9);
+    const w = s.width, h = s.height;
+    if (mark === 'zigzag') {
+      g.beginPath(); g.moveTo(1, h - 2);
+      for (let x = 3; x < w; x += 4) g.lineTo(x, (x / 4) % 2 < 1 ? 1 : h - 2);
+      g.strokePath();
+    } else if (mark === 'waves') {
+      g.lineBetween(2, h / 2, w - 2, h / 2);
+      g.lineBetween(4, h / 2 - 2, w - 4, h / 2 - 2);
+    } else if (mark === 'dots') {
+      g.fillStyle(0xffffff, 0.9);
+      for (let x = 3; x < w; x += 6) g.fillRect(x, h / 2 - 1, 2, 2);
     }
+    obj.markGraphics = g;
   }
 
   // Restored objects fade from black-and-white to their new color.
@@ -304,6 +349,7 @@ export class RoomScene extends Phaser.Scene {
     if (s.y <= target) return;
     s.y = Math.max(target, s.y - 1.5);
     s.body.updateFromGameObject();
+    if (obj.markGraphics) obj.markGraphics.y = s.y;
   }
 
   inHazard(c) {
@@ -346,6 +392,7 @@ export class RoomScene extends Phaser.Scene {
   // color underneath is never pushed down by the one on top (Blue must stay afloat).
   resolveStanding() {
     for (const rider of this.chars) {
+      const was = rider.supporter;
       rider.supporter = null;
       if (this.time.now - rider.jumpedAt < 150) continue; // just jumped off
       for (const sup of this.chars) {
@@ -354,10 +401,11 @@ export class RoomScene extends Phaser.Scene {
         const s = sup.body;
         const overlapX = r.right > s.left + 2 && r.left < s.right - 2;
         const prevBottom = r.prev.y + r.height;
-        const landing = prevBottom <= s.top + 3 && r.bottom >= s.top - 1;
+        // A rider that was already standing here stays on even if the two drift a few pixels apart.
+        const landing = prevBottom <= s.top + 3 && r.bottom >= s.top - (was === sup ? 4 : 1);
         if (overlapX && landing) {
           r.y = s.top - r.height;
-          r.velocity.y = Math.min(s.velocity.y, 0);
+          r.velocity.y = s.velocity.y; // falls or rises with the color underneath
           rider.supporter = sup; // update() then gives the rider the supporter's sideways speed
           break;
         }

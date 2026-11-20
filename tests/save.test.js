@@ -30,6 +30,12 @@ test('progress survives a save and load; clearing it means no save', () => {
   assert.equal(loadSave(ROOMS, store), null);
 });
 
+test('rooms that no longer exist are dropped, and the current room falls back to the first', () => {
+  const store = memoryStore();
+  store.setItem('color-puzzle-platformer-save-v1', JSON.stringify({ unlocked: ['a', 'gone'], solved: ['gone'], current: 'gone' }));
+  assert.deepEqual(loadSave(ROOMS, store), { unlocked: ['a'], solved: [], current: 'a' });
+});
+
 test('a damaged save is ignored', () => {
   const store = memoryStore();
   store.setItem('color-puzzle-platformer-save-v1', '{not json');

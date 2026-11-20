@@ -9,7 +9,12 @@ export const COLORS = {
   blue: { fill: 0x3a6ee0, shape: 'circle', jumpSpeed: 320, swims: true },
   // Red jumps high. A square, so it is told apart from Blue by shape, not only hue.
   red: { fill: 0xe03a3a, shape: 'square', jumpSpeed: 440, swims: false },
+  // Yellow's shape is reserved here so it never looks like Blue or Red; its glow ability arrives in 4.1.
+  yellow: { fill: 0xe8c93a, shape: 'triangle', jumpSpeed: 320, swims: false },
 };
+
+// Colors in the order they're listed above; the first one present in a room starts active.
+export const COLOR_ORDER = Object.keys(COLORS);
 
 export const MOVE_SPEED = 110;
 export const SWIM_SPEED = 80;
@@ -24,10 +29,13 @@ export class ColorCharacter {
     this.startX = x;
     this.startY = y;
 
-    this.sprite =
-      this.def.shape === 'circle'
-        ? scene.add.circle(x, y, SIZE / 2, this.def.fill)
-        : scene.add.rectangle(x, y, SIZE, SIZE, this.def.fill);
+    const h = SIZE / 2;
+    const shapes = {
+      circle: () => scene.add.circle(x, y, h, this.def.fill),
+      square: () => scene.add.rectangle(x, y, SIZE, SIZE, this.def.fill),
+      triangle: () => scene.add.triangle(x, y, 0, SIZE, h, 0, SIZE, SIZE, this.def.fill),
+    };
+    this.sprite = shapes[this.def.shape]();
     scene.physics.add.existing(this.sprite);
     this.body = this.sprite.body;
     this.body.setSize(SIZE, SIZE);

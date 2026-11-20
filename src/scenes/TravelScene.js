@@ -24,7 +24,11 @@ export class TravelScene extends MenuScene {
     // Start on the room after the one we came from, if it's unlocked.
     const fromIndex = this.items.findIndex((i) => i.key === this.from);
     if (fromIndex >= 0 && fromIndex + 1 < this.items.length) this.selectedStart = fromIndex + 1;
-    this.onBack = () => this.scene.start('Room', { room: this.from || ROOMS[0].key });
+    // Back out: the room underneath was only paused, so it carries on exactly as it was.
+    this.onBack = () => {
+      this.scene.stop();
+      this.scene.resume('Room');
+    };
   }
 
   create() {

@@ -28,14 +28,14 @@ Every room declares its goal as an end state in the map's custom properties. The
    | 3 | `ice` | Solid. A hot object melts the ice touching it, and any ice connected to that. |
    | 4 | `spikes` | Touching the lower part of the tile sends the colors back to their starts. |
 
-   Keep water a little below the ground beside it (the template uses 16 px), so a floating Blue sits level with the ground and Red can step onto it.
+   Keep water a little below the ground beside it (the template uses 16 px). A floating Blue then sits 8 px below the ground: Red can step down onto it, and has to hop to get off onto the ground.
 
 2. **`objects`** (object layer). Every object keeps the stable ID Tiled gives it, and the game looks objects up by that ID.
 
    | Type | Shape | Meaning |
    |---|---|---|
-   | `spawn` | point, named `blue` or `red` | Where that color starts, at its feet (bottom centre). A color without a spawn point isn't in the room. |
-   | `platform` | rectangle | A black-and-white platform that colors can stand on. Custom property `reacts` (bool): whether colors react with it. |
+   | `spawn` | point, named after a color (`blue`, `red`, later `yellow`) | Where that color starts, at its feet (bottom centre). A color without a spawn point isn't in the room. |
+   | `platform` | rectangle | A black-and-white platform that colors can stand on. Custom property `reacts` (bool): whether colors react with it. Any other object type that has a row in `src/game/reactions.js` is placed the same way. |
 | `portal` | rectangle | The exit portal. Gray and closed until the room's goal is met; then it turns violet and opens, and the active color standing in it can use it (E/Enter or gamepad X) to open the travel screen. |
 
 ## Color reactions
@@ -46,9 +46,18 @@ What an object becomes when a color touches it is set in `src/game/reactions.js`
 - Blue: floating. It turns blue, and if it's in water it rises to the surface, where colors can stand on it.
 - Yellow: glowing (defined, not used until Yellow exists).
 
+## Movement numbers for room design
+
+From the movement settings in `src/game/ColorCharacter.js` (gravity 900, run speed 110), with the jump heights and Red's gap measured in the test room (16 px tiles):
+
+- Blue's jump rises about 54 px (just over 3 tiles); Red's rises about 104 px (6.5 tiles).
+- Red's running jump crosses about 107 px (6.5 tiles) of gap; Blue's about 78 px (worked out, not measured). A 6-tile (96 px) pool can be jumped by Red alone, so a water crossing meant to need Blue must be wider than 7 tiles.
+- Blue standing on Red gains 16 px, so Blue reaches about 70 px above the ground Red stands on.
+
 ## Room rules the game applies
 
 - Falling off the bottom of the room, spikes, or a non-swimmer sinking in water: every color goes back to its spawn point. Objects keep their current state.
 - Restart (R, or the gamepad's Back/Select button): the whole room reloads from this file, so objects are back as authored and the colors are back at their spawns.
 - Blue is always the active color when a room starts.
+- A room that's already solved starts with its portal open, so returning to it never traps the player.
 - Meeting the goal marks the room solved and unlocks the next room in `src/game/rooms.js`. Progress (unlocked rooms, solved rooms, current room) is saved in the browser's localStorage.

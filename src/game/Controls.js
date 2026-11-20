@@ -5,13 +5,17 @@ import Phaser from 'phaser';
 //   R to restart the room, E or Enter to use a portal or confirm, Esc to go back.
 // Gamepad (standard layout): d-pad or left stick to move, A to jump or confirm, Y or a shoulder button
 //   to switch, down to dive, Back/Select to restart, X to use a portal, B to go back.
+// Gamepad button state is shared by every scene, so a button held while one scene hands over to
+// another (a menu choice starting a room, a restart) isn't read as a new press by the next scene.
+const sharedPadState = {};
+
 export class Controls {
   constructor(scene) {
     this.scene = scene;
     const kb = scene.input.keyboard;
     this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,A,D,W,S,SPACE,Q,TAB,R,E,ENTER,ESC');
     kb.addCapture('TAB,SPACE,UP,DOWN,LEFT,RIGHT');
-    this.prevPad = {};
+    this.prevPad = sharedPadState;
   }
 
   pad() {
