@@ -1,11 +1,21 @@
 # Room format
 
-Each room is one [Tiled](https://www.mapeditor.org) map saved as JSON in `public/rooms/<room-key>.json`. The game loads it by its key (the file name without `.json`). New rooms start as a copy of `public/rooms/test-room.json`, the template room.
+Each room is one [Tiled](https://www.mapeditor.org) map saved as JSON in `public/rooms/<room-key>.json`. The game loads it by its key (the file name without `.json`). New rooms start as a copy of `public/rooms/test-room.json`, the template room. The play order of rooms is the list in `src/game/rooms.js`.
 
 ## Map settings
 
 - Orthogonal map, 16x16 tiles, 30 tiles wide and 17 tall (the 480x270 screen; the bottom row is partly off screen).
 - Tileset: `public/assets/tiles.png`, embedded in the map, named `tiles`. The game always loads the image under that name, so the image path in the map only matters to the Tiled editor.
+
+## Map properties (the room's goal)
+
+Every room declares its goal as an end state in the map's custom properties. The game checks it every frame, so any route or order that reaches the end state counts.
+
+| Property | Type | Meaning |
+|---|---|---|
+| `goal` | string | `all-in-portal`: every color standing inside the portal. `object-effect`: one object has a given reaction. |
+| `goalObject` | int | For `object-effect`: the Tiled ID of the object. |
+| `goalEffect` | string | For `object-effect`: the effect it must have (`hot`, `float`, ...). |
 
 ## Layers (names must match)
 
@@ -26,6 +36,7 @@ Each room is one [Tiled](https://www.mapeditor.org) map saved as JSON in `public
    |---|---|---|
    | `spawn` | point, named `blue` or `red` | Where that color starts, at its feet (bottom centre). A color without a spawn point isn't in the room. |
    | `platform` | rectangle | A black-and-white platform that colors can stand on. Custom property `reacts` (bool): whether colors react with it. |
+| `portal` | rectangle | The exit portal. Gray and closed until the room's goal is met; then it turns violet and opens, and the active color standing in it can use it (E/Enter or gamepad X) to open the travel screen. |
 
 ## Color reactions
 
@@ -40,3 +51,4 @@ What an object becomes when a color touches it is set in `src/game/reactions.js`
 - Falling off the bottom of the room, spikes, or a non-swimmer sinking in water: every color goes back to its spawn point. Objects keep their current state.
 - Restart (R, or the gamepad's Back/Select button): the whole room reloads from this file, so objects are back as authored and the colors are back at their spawns.
 - Blue is always the active color when a room starts.
+- Meeting the goal marks the room solved and unlocks the next room in `src/game/rooms.js`. Progress (unlocked rooms, solved rooms, current room) is saved in the browser's localStorage.

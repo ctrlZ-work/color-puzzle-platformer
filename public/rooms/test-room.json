@@ -11,12 +11,17 @@
  "tilewidth": 16,
  "tileheight": 16,
  "nextlayerid": 3,
- "nextobjectid": 5,
+ "nextobjectid": 6,
  "properties": [
   {
    "name": "name",
    "type": "string",
-   "value": "Test room (template)"
+   "value": "Test room 1 (template)"
+  },
+  {
+   "name": "goal",
+   "type": "string",
+   "value": "all-in-portal"
   }
  ],
  "tilesets": [
@@ -669,6 +674,17 @@
        "value": true
       }
      ]
+    },
+    {
+     "id": 5,
+     "name": "exit",
+     "type": "portal",
+     "x": 292,
+     "y": 176,
+     "width": 40,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
     }
    ]
   }

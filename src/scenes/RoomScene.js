@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { Controls } from '../game/Controls.js';
 import { touchObject } from '../game/reactions.js';
+import { ROOMS } from '../game/rooms.js';
+import { loadSave, freshSave, writeSave, markSolved } from '../game/save.js';
 import {
   ColorCharacter,
   MOVE_SPEED,
@@ -16,6 +18,7 @@ import {
 
 const TILE = 16;
 const BW_FILL = 0xbdbdbd;
+const PORTAL_OPEN_FILL = 0xb07cf0;
 
 export class RoomScene extends Phaser.Scene {
   constructor() {
@@ -23,7 +26,7 @@ export class RoomScene extends Phaser.Scene {
   }
 
   init(data) {
-    this.roomKey = (data && data.room) || 'test-room';
+    this.roomKey = (data && data.room) || ROOMS[0].key;
   }
 
   preload() {
@@ -45,6 +48,11 @@ export class RoomScene extends Phaser.Scene {
       this.add.rectangle(t.pixelX, t.pixelY, TILE, TILE, 0x6f6f6f, 0.8).setOrigin(0, 0).setDepth(2);
     });
 
+    // The room's goal, from the map's custom properties (see docs/room-format.md).
+    this.roomProps = Object.fromEntries((map.properties || []).map((p) => [p.name, p.value]));
+    this.portal = null;
+    this.portalOpen = false;
+
     // Objects from the Tiled object layer, keyed by their stable Tiled ID.
     this.objectsById = new Map();
     this.objectGroup = this.physics.add.staticGroup();
@@ -62,6 +70,11 @@ export class RoomScene extends Phaser.Scene {
           id: o.id, name: o.name, type: o.type, props, sprite: r,
           reacts: props.reacts === true, touchedBy: null, effect: null,
         });
+      } else if (o.type === 'portal') {
+        // Exit portal: black-and-white and closed until the room's goal is met.
+        const r = this.add.rectangle(o.x, o.y, o.width, o.height, 0x555555, 0.6).setOrigin(0, 0); // drawn behind the colors
+        r.setStrokeStyle(1, BW_FILL);
+        this.portal = { id: o.id, sprite: r, area: new Phaser.Geom.Rectangle(o.x, o.y, o.width, o.height) };
       }
     }
 
@@ -81,12 +94,42 @@ export class RoomScene extends Phaser.Scene {
       .text(
         8,
         6,
-        'Move: arrows/WASD or stick   Jump: Space/Up or A   Switch: Q/Tab or Y\nDive: Down   Restart room: R or Back',
+        'Move: arrows/WASD or stick   Jump: Space/Up or A   Switch: Q/Tab or Y\nDive: Down   Restart room: R or Back   Use open portal: E/Enter or X',
         { fontFamily: 'monospace', fontSize: '8px', color: '#bbbbbb' },
       )
       .setDepth(3);
 
+    // Remember where the player is, so Continue returns here.
+    this.save = loadSave(ROOMS) || freshSave(ROOMS);
+    this.save.current = this.roomKey;
+    writeSave(this.save);
+
     this.ready = true; // for automated checks
+  }
+
+  // The goal is an end state, checked every frame, so any route or order that reaches it counts.
+  //   goal = "all-in-portal": every color is standing inside the portal's area.
+  //   goal = "object-effect": the object with ID goalObject has the effect goalEffect.
+  goalMet() {
+    const g = this.roomProps;
+    if (g.goal === 'all-in-portal' && this.portal) {
+      return this.chars.every((c) => {
+        const b = c.body;
+        return Phaser.Geom.Rectangle.Contains(this.portal.area, b.center.x, b.bottom - 1) && c.onGround;
+      });
+    }
+    if (g.goal === 'object-effect') {
+      const o = this.objectsById.get(g.goalObject);
+      return !!o && o.effect === g.goalEffect;
+    }
+    return false;
+  }
+
+  openPortal() {
+    this.portalOpen = true;
+    this.fadeTo(this.portal.sprite, PORTAL_OPEN_FILL, 0x555555);
+    markSolved(this.save, ROOMS, this.roomKey);
+    writeSave(this.save);
   }
 
   kindOf(tile) {
@@ -137,6 +180,15 @@ export class RoomScene extends Phaser.Scene {
     if (this.chars.some((c) => this.inHazard(c))) this.hazardReset();
     this.updateObjects();
     this.resolveStanding();
+    if (this.portal && !this.portalOpen && this.goalMet()) this.openPortal();
+    if (this.portalOpen && ctl.usePressed) {
+      const b = this.active.body;
+      if (Phaser.Geom.Intersects.RectangleToRectangle(this.portal.area, new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height))) {
+        this.ready = false;
+        this.scene.start('Travel', { from: this.roomKey });
+        return;
+      }
+    }
 
     if (ctl.switchPressed) this.activeIndex = (this.activeIndex + 1) % this.chars.length;
     if (ctl.jumpPressed) this.active.jumpRequestedAt = time;
@@ -213,8 +265,8 @@ export class RoomScene extends Phaser.Scene {
   }
 
   // Restored objects fade from black-and-white to their new color.
-  fadeTo(rect, fill) {
-    const from = Phaser.Display.Color.ValueToColor(BW_FILL);
+  fadeTo(rect, fill, start = BW_FILL) {
+    const from = Phaser.Display.Color.ValueToColor(start);
     const to = Phaser.Display.Color.ValueToColor(fill);
     this.tweens.addCounter({
       from: 0, to: 100, duration: 400,

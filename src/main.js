@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
+import { TitleScene } from './scenes/TitleScene.js';
 import { RoomScene } from './scenes/RoomScene.js';
+import { TravelScene } from './scenes/TravelScene.js';
 
 // 480x270 internal resolution scaled to fit the window.
 const config = {
@@ -18,7 +20,7 @@ const config = {
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 900 }, debug: false },
   },
-  scene: [RoomScene],
+  scene: [TitleScene, RoomScene, TravelScene],
 };
 
 window.game = new Phaser.Game(config);
