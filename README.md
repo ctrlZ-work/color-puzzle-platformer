@@ -10,7 +10,7 @@ A side-scrolling puzzle platformer for [playadinfinitum.com](https://playadinfin
 
 ## Requirements
 
-- Node.js 20 or newer (developed on Node 22) and npm.
+- Node.js 22.12 or newer (or 20.19 or newer), and npm. Vite 8 requires one of those; Netlify builds with Node 22, so use Node 22 to match it.
 
 ## Run
 
