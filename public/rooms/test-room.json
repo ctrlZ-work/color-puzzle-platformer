@@ -11,7 +11,7 @@
  "tilewidth": 16,
  "tileheight": 16,
  "nextlayerid": 3,
- "nextobjectid": 4,
+ "nextobjectid": 5,
  "properties": [
   {
    "name": "name",
@@ -640,6 +640,24 @@
      "type": "platform",
      "x": 336,
      "y": 200,
+     "width": 32,
+     "height": 8,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "reacts",
+       "type": "bool",
+       "value": true
+      }
+     ]
+    },
+    {
+     "id": 4,
+     "name": "platform-2",
+     "type": "platform",
+     "x": 240,
+     "y": 248,
      "width": 32,
      "height": 8,
      "rotation": 0,

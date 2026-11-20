@@ -41,6 +41,14 @@ npm run preview
 - Dive (Blue, in water): Down or S; gamepad down
 - Restart the room: R; gamepad Back/Select
 
+## Tests
+
+```
+npm test
+```
+
+Runs the small automated tests in `tests/` (currently the first-touch color rule).
+
 ## Tech
 
 - [Phaser 4](https://phaser.io) game framework with Arcade physics.
@@ -69,7 +77,7 @@ Publish from a clean checkout of the exact commit you mean to test: after `npm i
 
 After publishing:
 
-- Open the deploy's own permanent link (`https://<deploy-id>--color-puzzle-platformer-playtest.netlify.app`) as well as the playtest URL, and check the game loads with no errors in the browser console. A correct load currently shows the test room: two lines of controls at the top, a high ledge on the left, a gray water pool, a gray platform next to a stack of two ice blocks, a pit, and spikes on the far right; a blue circle and a red square stand on the left ground with a small white marker above the blue circle.
+- Open the deploy's own permanent link (`https://<deploy-id>--color-puzzle-platformer-playtest.netlify.app`) as well as the playtest URL, and check the game loads with no errors in the browser console. A correct load currently shows the test room: two lines of controls at the top, a high ledge on the left, a gray water pool with a gray platform sunk at the bottom, a gray platform next to a stack of two ice blocks, a pit, and spikes on the far right; a blue circle and a red square stand on the left ground with a small white marker above the blue circle.
 - Netlify does not record which commit an upload came from, so write the commit and the deploy ID in the plan issue's Evidence line. With the CLI you can also add `--message "<commit>"` so the Netlify deploy list shows it.
 
 Only publish from `main` or from the branch of the issue being tested.

@@ -7,6 +7,8 @@ Before doing any work in this repository:
    It is the active plan (written as milestones and numbered issues because Linear is at its issue limit). Find the current issue in its "Current state" section and work only that issue.
 3. Read the Design Specification: https://docs.google.com/document/d/1UY8eNpPs_zBgQbGKyk2B0hoghZnzkWEBN96D_W8CHco/edit
 
+At the start of each plan milestone, also reread the Project Execution team doc (https://linear.app/open-art-media/document/project-execution-0a4e75850057) and the plan's Settled decisions and Current state, then keep going into the milestone without waiting (Gabrielle's standing instruction, recorded in the plan).
+
 Working rules for this repo:
 
 - One branch per plan issue. Merge to `main` only after the issue's acceptance conditions pass.

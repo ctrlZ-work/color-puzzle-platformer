@@ -15,7 +15,7 @@ Each room is one [Tiled](https://www.mapeditor.org) map saved as JSON in `public
    |---|---|---|
    | 1 | `solid` | Ground and walls. Colors stand on it and can't pass through. |
    | 2 | `water` | Blue floats at the top of a water column and can dive. A color that can't swim (Red) that sinks into it sends the colors back to their starts. |
-   | 3 | `ice` | Solid for now. Issue 2.3 lets a hot object melt ice next to it. |
+   | 3 | `ice` | Solid. A hot object melts the ice touching it, and any ice connected to that. |
    | 4 | `spikes` | Touching the lower part of the tile sends the colors back to their starts. |
 
    Keep water a little below the ground beside it (the template uses 16 px), so a floating Blue sits level with the ground and Red can step onto it.
@@ -25,7 +25,15 @@ Each room is one [Tiled](https://www.mapeditor.org) map saved as JSON in `public
    | Type | Shape | Meaning |
    |---|---|---|
    | `spawn` | point, named `blue` or `red` | Where that color starts, at its feet (bottom centre). A color without a spawn point isn't in the room. |
-   | `platform` | rectangle | A black-and-white platform that colors can stand on. Custom property `reacts` (bool): whether colors react with it (issue 2.3). |
+   | `platform` | rectangle | A black-and-white platform that colors can stand on. Custom property `reacts` (bool): whether colors react with it. |
+
+## Color reactions
+
+What an object becomes when a color touches it is set in `src/game/reactions.js` (object type x color). The first color to touch an object decides, and it stays that way until the room restarts. Current reactions for `platform`:
+
+- Red: hot. It turns red, melts the ice touching it, and can no longer be stood on.
+- Blue: floating. It turns blue, and if it's in water it rises to the surface, where colors can stand on it.
+- Yellow: glowing (defined, not used until Yellow exists).
 
 ## Room rules the game applies
 

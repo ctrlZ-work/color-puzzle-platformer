@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Controls } from '../game/Controls.js';
+import { touchObject } from '../game/reactions.js';
 import {
   ColorCharacter,
   MOVE_SPEED,
@@ -14,6 +15,7 @@ import {
 // back to its start point; objects keep their state (that's what restart is for).
 
 const TILE = 16;
+const BW_FILL = 0xbdbdbd;
 
 export class RoomScene extends Phaser.Scene {
   constructor() {
@@ -52,11 +54,14 @@ export class RoomScene extends Phaser.Scene {
       if (o.type === 'spawn') {
         spawns[o.name] = { x: o.x, y: o.y };
       } else if (o.type === 'platform') {
-        // Black-and-white platform; its color reactions are added in issue 2.3.
-        const r = this.add.rectangle(o.x, o.y, o.width, o.height, 0xbdbdbd).setOrigin(0, 0);
+        // Black-and-white platform; what it becomes depends on the first color to touch it.
+        const r = this.add.rectangle(o.x, o.y, o.width, o.height, BW_FILL).setOrigin(0, 0);
         r.setStrokeStyle(1, 0x7a7a7a);
         this.objectGroup.add(r);
-        this.objectsById.set(o.id, { id: o.id, name: o.name, type: o.type, props, sprite: r });
+        this.objectsById.set(o.id, {
+          id: o.id, name: o.name, type: o.type, props, sprite: r,
+          reacts: props.reacts === true, touchedBy: null, effect: null,
+        });
       }
     }
 
@@ -130,6 +135,7 @@ export class RoomScene extends Phaser.Scene {
     // Physics has already stepped this frame; settle water, hazards and standing first.
     for (const c of this.chars) this.updateWater(c);
     if (this.chars.some((c) => this.inHazard(c))) this.hazardReset();
+    this.updateObjects();
     this.resolveStanding();
 
     if (ctl.switchPressed) this.activeIndex = (this.activeIndex + 1) % this.chars.length;
@@ -176,6 +182,76 @@ export class RoomScene extends Phaser.Scene {
     let top = a.top;
     for (const c of this.chars) if (c.supporter === this.active) top = Math.min(top, c.body.top);
     this.marker.setPosition(a.center.x, top - 7);
+  }
+
+  // Touching an object (standing on it or against its side) gives it that color's reaction,
+  // if no color has touched it yet in this room.
+  updateObjects() {
+    for (const obj of this.objectsById.values()) {
+      if (obj.effect === 'float') this.floatStep(obj);
+      if (obj.touchedBy || !obj.reacts) continue;
+      const r = obj.sprite.getBounds();
+      Phaser.Geom.Rectangle.Inflate(r, 2, 2);
+      for (const c of this.chars) {
+        const b = c.body;
+        const body = new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height);
+        if (!Phaser.Geom.Intersects.RectangleToRectangle(r, body)) continue;
+        const reaction = touchObject(obj, c.name);
+        if (reaction) this.applyEffect(obj, reaction);
+        break;
+      }
+    }
+  }
+
+  applyEffect(obj, reaction) {
+    obj.effect = reaction.effect;
+    this.fadeTo(obj.sprite, reaction.fill);
+    if (reaction.effect === 'hot') {
+      obj.sprite.body.enable = false; // too hot to stand on
+      this.meltIceAround(obj.sprite.getBounds());
+    }
+  }
+
+  // Restored objects fade from black-and-white to their new color.
+  fadeTo(rect, fill) {
+    const from = Phaser.Display.Color.ValueToColor(BW_FILL);
+    const to = Phaser.Display.Color.ValueToColor(fill);
+    this.tweens.addCounter({
+      from: 0, to: 100, duration: 400,
+      onUpdate: (tw) => {
+        const c = Phaser.Display.Color.Interpolate.ColorWithColor(from, to, 100, tw.getValue());
+        rect.setFillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b));
+      },
+    });
+  }
+
+  // Removes every ice tile touching the given area, and any ice connected to those tiles.
+  meltIceAround(area) {
+    const x0 = Math.floor((area.left - 1) / TILE), x1 = Math.floor((area.right) / TILE);
+    const y0 = Math.floor((area.top - 1) / TILE), y1 = Math.floor((area.bottom) / TILE);
+    const queue = [];
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) queue.push([tx, ty]);
+    const seen = new Set();
+    while (queue.length) {
+      const [tx, ty] = queue.pop();
+      const key = tx + ',' + ty;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (this.kindOf(this.terrain.getTileAt(tx, ty, true)) !== 'ice') continue;
+      this.terrain.removeTileAt(tx, ty);
+      queue.push([tx + 1, ty], [tx - 1, ty], [tx, ty + 1], [tx, ty - 1]);
+    }
+  }
+
+  // A floating platform rises to the top of the water it's in, half above the surface.
+  floatStep(obj) {
+    const s = obj.sprite;
+    const cx = s.x + s.width / 2;
+    if (this.kindAt(cx, s.y + s.height - 1) !== 'water') return;
+    const target = this.surfaceAt(cx, s.y + s.height - 1) - s.height / 2;
+    if (s.y <= target) return;
+    s.y = Math.max(target, s.y - 1.5);
+    s.body.updateFromGameObject();
   }
 
   inHazard(c) {
