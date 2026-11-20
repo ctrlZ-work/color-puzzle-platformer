@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { BootScene } from './scenes/BootScene.js';
+import { TestRoomScene } from './scenes/TestRoomScene.js';
 
 // 480x270 internal resolution scaled to fit the window.
 const config = {
@@ -13,11 +13,12 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
+  input: { gamepad: true },
   physics: {
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 900 }, debug: false },
   },
-  scene: [BootScene],
+  scene: [TestRoomScene],
 };
 
 window.game = new Phaser.Game(config);
