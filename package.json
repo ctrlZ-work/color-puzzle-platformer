@@ -1,6 +1,6 @@
 {
   "name": "color-puzzle-platformer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Color puzzle platformer (working title) for playadinfinitum.com",
   "scripts": {
     "dev": "vite",
