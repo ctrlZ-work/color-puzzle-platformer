@@ -57,6 +57,13 @@ The site is not connected to GitHub, so pushing does not deploy by itself. To pu
    ```
    Sign in first with `npx -y netlify-cli login`, or set `NETLIFY_AUTH_TOKEN`.
 
-After publishing, open the playtest URL and check the game loads with no errors in the browser console. Only publish from `main` or from the branch of the issue being tested.
+Publish from a clean checkout of the exact commit you mean to test: after `npm install`, `git status` should show no changes. `node_modules/` and `dist/` can stay; they are ignored.
+
+After publishing:
+
+- Open the deploy's own permanent link (`https://<deploy-id>--color-puzzle-platformer-playtest.netlify.app`) as well as the playtest URL, and check the game loads with no errors in the browser console. Until rooms exist, a correct load shows the title text "Color Puzzle Platformer (working title)" and a red square that falls onto a floor.
+- Netlify does not record which commit an upload came from, so write the commit and the deploy ID in the plan issue's Evidence line. With the CLI you can also add `--message "<commit>"` so the Netlify deploy list shows it.
+
+Only publish from `main` or from the branch of the issue being tested.
 
 The playtest site is public but unlisted. Don't link to it from anywhere public.
